@@ -48,7 +48,7 @@ done < <(find "$EXTRACT_DIR" -maxdepth 3 -type f -name Makefile | sort)
 
 if [[ -z "$IB_DIR" ]]; then
   echo "ERROR: cannot locate ImageBuilder root (Makefile with 'image:' target not found)" >&2
-  echo "DEBUG: extracted top-level:" >&2
+  echo "DEBUG: extracted top-level dirs:" >&2
   find "$EXTRACT_DIR" -maxdepth 2 -type d -print >&2 || true
   exit 1
 fi
@@ -59,24 +59,24 @@ echo "Preparing overlay files..."
 OVERLAY="$ROOT_DIR/files"
 test -d "$OVERLAY"
 
-# Collect packages
+# 收集 packages（默认 preset + groups + extra/remove）
 export GROUPS EXTRA_PACKAGES REMOVE_PACKAGES
 PACKAGES="$(bash "$ROOT_DIR/scripts/collect_packages.sh" default)"
 echo "Packages: $PACKAGES"
 
 pushd "$IB_DIR" >/dev/null
 
-# （可选）打印 info，方便排查 PROFILE 是否存在
-echo "== make info (first 50 lines) =="
-make info | head -n 50 || true
+# 打印一些 info，方便排查 PROFILE / feeds 等（不影响构建）
+echo "== make info (first 60 lines) =="
+make info | head -n 60 || true
 echo "================================"
 
-# Build
+# 构建固件
 make image PROFILE="$PROFILE" PACKAGES="$PACKAGES" FILES="$OVERLAY"
 
 popd >/dev/null
 
-# Find firmware output
+# 输出目录
 OUTDIR="$IB_DIR/bin/targets/${TARGET}"
 if [[ ! -d "$OUTDIR" ]]; then
   echo "ERROR: output dir not found: $OUTDIR" >&2
@@ -84,7 +84,7 @@ if [[ ! -d "$OUTDIR" ]]; then
   exit 1
 fi
 
-# Prefer sysupgrade img.gz
+# 优先 sysupgrade 的 img.gz
 firmware="$(ls -1 "$OUTDIR"/*nanopi-r2s*sysupgrade*.img.gz 2>/dev/null | head -n 1 || true)"
 if [[ -z "$firmware" ]]; then
   firmware="$(ls -1 "$OUTDIR"/*nanopi-r2s*.img.gz 2>/dev/null | head -n 1 || true)"
@@ -95,7 +95,9 @@ if [[ -z "$firmware" ]]; then
   exit 1
 fi
 
-# Release metadata
+echo "Done: $firmware"
+
+# Release 信息
 id_short="${UPSTREAM_ID:0:12}"
 if [[ "$CHANNEL" == "snapshot" ]]; then
   release_tag="immortalwrt-${UPSTREAM_VERSION}-${id_short}-r2s"
@@ -118,13 +120,14 @@ Upstream-ID: ${UPSTREAM_ID}
 EOF
 )
 
+# 写 GitHub Actions outputs（修复多行 delimiter 报错：使用随机分隔符）
 echo "firmware_path=$firmware" >> "$GITHUB_OUTPUT"
 echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
 echo "release_name=$release_name" >> "$GITHUB_OUTPUT"
-{
-  echo "release_body<<'EOF'"
-  echo "$release_body"
-  echo "EOF"
-} >> "$GITHUB_OUTPUT"
 
-echo "Done: $firmware"
+DELIM="__RELEASE_BODY_$(date +%s%N)__"
+{
+  echo "release_body<<$DELIM"
+  echo "$release_body"
+  echo "$DELIM"
+} >> "$GITHUB_OUTPUT"
