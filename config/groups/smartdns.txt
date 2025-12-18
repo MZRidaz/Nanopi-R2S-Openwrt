@@ -1,0 +1,3 @@
+# SmartDNS
+luci-app-smartdns
+luci-i18n-smartdns-zh-cn

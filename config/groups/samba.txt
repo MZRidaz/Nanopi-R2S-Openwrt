@@ -1,0 +1,4 @@
+# SMB 文件共享
+luci-app-samba4
+luci-i18n-samba4-zh-cn
+samba4-server

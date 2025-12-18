@@ -1,0 +1,3 @@
+# QoS / SQM
+luci-app-sqm
+luci-i18n-sqm-zh-cn

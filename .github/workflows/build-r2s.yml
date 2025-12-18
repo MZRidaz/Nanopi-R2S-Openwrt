@@ -1,0 +1,89 @@
+name: Build ImmortalWrt R2S (ImageBuilder)
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "上游通道：stable 或 snapshot（默认 stable）"
+        type: choice
+        options:
+          - stable
+          - snapshot
+        default: stable
+      groups:
+        description: "预设功能组（空格分隔），例如：dns smartdns sqm"
+        required: false
+        default: ""
+      extra_packages:
+        description: "额外安装包（空格分隔），例如：htop tcpdump"
+        required: false
+        default: ""
+      remove_packages:
+        description: "移除包（空格分隔，前面可带 - 号），例如：-ppp -pppoe"
+        required: false
+        default: ""
+      force:
+        description: "强制构建（忽略“上游未更新则跳过”）"
+        type: boolean
+        required: false
+        default: false
+
+  schedule:
+    # 北京时间每周六 02:00 = UTC 每周五 18:00
+    - cron: "0 18 * * 5"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends             ca-certificates curl wget git jq zstd tar xz-utils unzip rsync make gcc g++             file python3
+
+      - name: Resolve upstream + decide whether to build
+        id: resolve
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          FORCE_BUILD: ${{ inputs.force }}
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/resolve.sh
+
+      - name: Build firmware (ImageBuilder)
+        id: build
+        if: steps.resolve.outputs.skip != 'true'
+        env:
+          CHANNEL: ${{ steps.resolve.outputs.channel }}
+          UPSTREAM_VERSION: ${{ steps.resolve.outputs.version }}
+          UPSTREAM_ID: ${{ steps.resolve.outputs.upstream_id }}
+          IMAGEBUILDER_URL: ${{ steps.resolve.outputs.imagebuilder_url }}
+          TARGET: ${{ steps.resolve.outputs.target }}
+          PROFILE: ${{ steps.resolve.outputs.profile }}
+          GROUPS: ${{ inputs.groups }}
+          EXTRA_PACKAGES: ${{ inputs.extra_packages }}
+          REMOVE_PACKAGES: ${{ inputs.remove_packages }}
+        run: bash scripts/build.sh
+
+      - name: Upload build artifact
+        if: steps.resolve.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: ${{ steps.build.outputs.firmware_path }}
+
+      - name: Create GitHub Release (firmware only)
+        if: steps.resolve.outputs.skip != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.build.outputs.release_tag }}
+          name: ${{ steps.build.outputs.release_name }}
+          body: ${{ steps.build.outputs.release_body }}
+          target_commitish: ${{ github.sha }}
+          files: ${{ steps.build.outputs.firmware_path }}

@@ -1,0 +1,20 @@
+# 默认精简可用（LuCI + Passwall + 中文）
+# 说明：ImageBuilder 的 PACKAGES 支持：
+#  - 直接写包名：安装
+#  - 前置 '-'：移除（例如 -ppp -pppoe）
+
+# LuCI（含 HTTPS）
+luci
+luci-ssl-openssl
+luci-compat
+luci-app-firewall
+luci-app-package-manager
+
+# 中文 i18n（仅挑常用模块；更多可按需加）
+luci-i18n-base-zh-cn
+luci-i18n-firewall-zh-cn
+luci-i18n-package-manager-zh-cn
+
+# Passwall（含中文）
+luci-app-passwall
+luci-i18n-passwall-zh-cn

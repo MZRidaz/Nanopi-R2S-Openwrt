@@ -1,0 +1,4 @@
+# 传统 VPN（OpenVPN）
+luci-app-openvpn
+luci-i18n-openvpn-zh-cn
+openvpn-openssl

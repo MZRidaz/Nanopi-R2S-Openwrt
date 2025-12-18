@@ -1,0 +1,25 @@
+#!/bin/sh
+# /etc/uci-defaults/99-custom
+# 在首次启动时设置：LAN IP、root 密码、LuCI 语言
+set -e
+
+ROOT_PW_HASH='$6$uQ6SIsrbLolJUhLl$eVTvvoM6m5ZryiyG2zZP9L97.RIGZcPWRw/ZoRyGBhtKXsm.pLi8hk1ymSt9bC1Oa0HzEZxbeQ2mIB2ZSuwJ/0'
+
+# 1) LAN IP
+uci -q set network.lan.ipaddr='192.168.2.1'
+uci -q set network.lan.netmask='255.255.255.0'
+uci -q commit network
+
+# 2) root password
+if [ -f /etc/shadow ]; then
+  sed -i "s#^root:[^:]*:#root:${ROOT_PW_HASH}:#" /etc/shadow || true
+fi
+
+# 3) LuCI 默认语言（简体中文）
+uci -q set luci.main.lang='zh_cn'
+uci -q commit luci
+
+# 应用网络配置（避免需要重启才生效）
+/etc/init.d/network restart >/dev/null 2>&1 || true
+
+exit 0

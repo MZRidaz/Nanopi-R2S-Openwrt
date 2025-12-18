@@ -1,0 +1,4 @@
+# Docker 管理（R2S 性能/存储按需）
+luci-app-dockerman
+docker
+dockerd

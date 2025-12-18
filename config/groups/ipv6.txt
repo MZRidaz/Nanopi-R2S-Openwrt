@@ -1,0 +1,4 @@
+# IPv6（常用工具）
+odhcp6c
+odhcpd-ipv6only
+ip6tables-nft

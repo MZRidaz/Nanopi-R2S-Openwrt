@@ -1,0 +1,4 @@
+# 监控
+luci-app-statistics
+luci-i18n-statistics-zh-cn
+collectd
