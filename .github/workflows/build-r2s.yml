@@ -4,16 +4,60 @@ on:
   workflow_dispatch:
     inputs:
       channel:
-        description: "上游通道：stable 或 snapshot（默认 stable）"
+        description: "上游通道"
         type: choice
         options:
           - stable
           - snapshot
         default: stable
-      groups:
-        description: "预设功能组（空格分隔），例如：dns smartdns sqm"
-        required: false
-        default: ""
+
+      # —— 友好菜单：勾选功能组（对应 config/groups/*.txt）——
+      enable_dns:
+        description: "DNS/广告过滤（adblock / adblock-fast）"
+        type: boolean
+        default: false
+      enable_smartdns:
+        description: "SmartDNS"
+        type: boolean
+        default: false
+      enable_sqm:
+        description: "SQM（抗缓冲膨胀/限速队列）"
+        type: boolean
+        default: false
+      enable_wireguard:
+        description: "WireGuard"
+        type: boolean
+        default: false
+      enable_zerotier:
+        description: "ZeroTier"
+        type: boolean
+        default: false
+      enable_docker:
+        description: "Docker + Dockerman（按需，体积较大）"
+        type: boolean
+        default: false
+      enable_samba:
+        description: "Samba4 文件共享"
+        type: boolean
+        default: false
+      enable_vpn:
+        description: "OpenVPN（传统 VPN）"
+        type: boolean
+        default: false
+      enable_monitor:
+        description: "监控统计（collectd/statistics）"
+        type: boolean
+        default: false
+      enable_ttyd:
+        description: "Web 终端（ttyd）"
+        type: boolean
+        default: false
+      enable_ipv6:
+        description: "IPv6 常用组件"
+        type: boolean
+        default: false
+
+      # —— 高级项：仍可手填额外包/移除包 ——
       extra_packages:
         description: "额外安装包（空格分隔），例如：htop tcpdump"
         required: false
@@ -45,16 +89,52 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends             ca-certificates curl wget git jq zstd tar xz-utils unzip rsync make gcc g++             file python3
+          sudo apt-get install -y --no-install-recommends \
+            ca-certificates curl wget git jq zstd tar xz-utils unzip rsync make gcc g++ \
+            file python3
 
       - name: Resolve upstream + decide whether to build
         id: resolve
         env:
-          CHANNEL: ${{ inputs.channel }}
-          FORCE_BUILD: ${{ inputs.force }}
+          # schedule 触发时没有 inputs，这里为空会回落到脚本默认 stable
+          CHANNEL: ${{ github.event.inputs.channel }}
+          FORCE_BUILD: ${{ github.event.inputs.force }}
           EVENT_NAME: ${{ github.event_name }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/resolve.sh
+
+      - name: Compose groups (checkbox -> GROUPS string)
+        id: compose
+        # 即使后面 skip，这步也无害；也方便在日志里看到最终 GROUPS
+        env:
+          ENABLE_DNS: ${{ github.event.inputs.enable_dns }}
+          ENABLE_SMARTDNS: ${{ github.event.inputs.enable_smartdns }}
+          ENABLE_SQM: ${{ github.event.inputs.enable_sqm }}
+          ENABLE_WIREGUARD: ${{ github.event.inputs.enable_wireguard }}
+          ENABLE_ZEROTIER: ${{ github.event.inputs.enable_zerotier }}
+          ENABLE_DOCKER: ${{ github.event.inputs.enable_docker }}
+          ENABLE_SAMBA: ${{ github.event.inputs.enable_samba }}
+          ENABLE_VPN: ${{ github.event.inputs.enable_vpn }}
+          ENABLE_MONITOR: ${{ github.event.inputs.enable_monitor }}
+          ENABLE_TTYD: ${{ github.event.inputs.enable_ttyd }}
+          ENABLE_IPV6: ${{ github.event.inputs.enable_ipv6 }}
+        run: |
+          groups=""
+          [[ "${ENABLE_DNS}" == "true" ]] && groups+=" dns"
+          [[ "${ENABLE_SMARTDNS}" == "true" ]] && groups+=" smartdns"
+          [[ "${ENABLE_SQM}" == "true" ]] && groups+=" sqm"
+          [[ "${ENABLE_WIREGUARD}" == "true" ]] && groups+=" wireguard"
+          [[ "${ENABLE_ZEROTIER}" == "true" ]] && groups+=" zerotier"
+          [[ "${ENABLE_DOCKER}" == "true" ]] && groups+=" docker"
+          [[ "${ENABLE_SAMBA}" == "true" ]] && groups+=" samba"
+          [[ "${ENABLE_VPN}" == "true" ]] && groups+=" vpn"
+          [[ "${ENABLE_MONITOR}" == "true" ]] && groups+=" monitor"
+          [[ "${ENABLE_TTYD}" == "true" ]] && groups+=" ttyd"
+          [[ "${ENABLE_IPV6}" == "true" ]] && groups+=" ipv6"
+
+          groups="${groups# }"
+          echo "Final GROUPS=${groups}"
+          echo "groups=${groups}" >> "$GITHUB_OUTPUT"
 
       - name: Build firmware (ImageBuilder)
         id: build
@@ -66,9 +146,13 @@ jobs:
           IMAGEBUILDER_URL: ${{ steps.resolve.outputs.imagebuilder_url }}
           TARGET: ${{ steps.resolve.outputs.target }}
           PROFILE: ${{ steps.resolve.outputs.profile }}
-          GROUPS: ${{ inputs.groups }}
-          EXTRA_PACKAGES: ${{ inputs.extra_packages }}
-          REMOVE_PACKAGES: ${{ inputs.remove_packages }}
+
+          # 来自 checkbox 拼装的 groups
+          GROUPS: ${{ steps.compose.outputs.groups }}
+
+          # 高级输入
+          EXTRA_PACKAGES: ${{ github.event.inputs.extra_packages }}
+          REMOVE_PACKAGES: ${{ github.event.inputs.remove_packages }}
         run: bash scripts/build.sh
 
       - name: Upload build artifact
