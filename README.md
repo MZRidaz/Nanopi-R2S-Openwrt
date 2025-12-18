@@ -9,10 +9,9 @@
 
 - [默认配置](#默认配置)
 - [一键推荐方案](#一键推荐方案)
-- [Actions 友好菜单（勾选功能组）](#actions-友好菜单勾选功能组)
-- [高级自定义（包清单）](#高级自定义包清单)
+- [高级自定义](#高级自定义)
 - [固件下载与刷写](#固件下载与刷写)
-- [插件清单（按功能分类）](#插件清单按功能分类)
+- [插件清单](#插件清单)
 - [FAQ](#faq)
 - [参考与致谢](#参考与致谢)
 - [License](#license)
@@ -21,25 +20,20 @@
 
 ## 默认配置
 
-| 项目     | 默认值                             |
-| -------- | ---------------------------------- |
-| 设备     | FriendlyARM NanoPi R2S             |
-| 目标平台 | rockchip/armv8                     |
-| Profile  | friendlyarm_nanopi-r2s             |
-| 管理 IP  | `192.168.2.1`                      |
-| 默认密码 | `password`                         |
-| Web 管理 | LuCI（含 HTTPS）                   |
-| 代理插件 | Passwall（含中文 i18n）            |
-| 构建方式 | ImmortalWrt 官方 ImageBuilder      |
-| 发布产物 | Releases（仅 `sysupgrade.img.gz`） |
+| 项目     | 默认值                 |
+| -------- | ---------------------- |
+| 设备     | FriendlyARM NanoPi R2S |
+| 目标平台 | rockchip/armv8         |
+| 管理 IP  | `192.168.2.1`          |
+| 默认密码 | `password`             |
+| Web 管理 | LuCI                   |
+| 代理插件 | Passwall               |
 
 > ⚠️ 安全提示：刷机后请尽快修改默认密码。
 
 ---
 
 ## 一键推荐方案
-
-> 下面都是在 Actions 的 Run workflow 页面勾选功能组即可（必要时再补 `extra_packages/remove_packages`）
 
 ### ✅ 1) 轻量旁路由（推荐默认）
 - 勾选：无（只保留默认 LuCI + Passwall 中文）
@@ -63,41 +57,11 @@
 
 ---
 
-## Actions 友好菜单（勾选功能组）
-
-在 `Run workflow` 页面，直接通过 **checkbox 开关**选择功能组（会映射到 `config/groups/*.txt`）：
-
-- DNS/广告过滤（adblock / adblock-fast）
-- SmartDNS
-- SQM
-- WireGuard
-- ZeroTier
-- Docker + Dockerman
-- Samba4
-- OpenVPN
-- 监控统计
-- Web 终端（ttyd）
-- IPv6 常用组件
-
-同时保留高级输入：
-- `extra_packages`：额外安装包（空格分隔），如 `htop tcpdump`
-- `remove_packages`：移除包（空格分隔，包名前加 `-`），如 `-ppp -pppoe`
-- `force`：强制构建（忽略“上游未更新则跳过”）
-
----
-
-## 高级自定义（包清单）
-
-> 如果你希望“配置即代码”，把选择固化到仓库里：
+## 高级自定义
 
 - 默认包清单：`config/presets/default.txt`
 - 功能组包清单：`config/groups/*.txt`
 - overlay（首次启动配置）：`files/`
-
-### 新增一个自己的功能组（示例）
-1. 新建 `config/groups/mygroup.txt`
-2. 写入你要安装的包名（每行一个）
-3. 在工作流里增加一个 checkbox，并在 `Compose groups` 步骤里拼上 `mygroup`
 
 ---
 
@@ -114,12 +78,7 @@ Releases 中只发布 **刷机用固件**（一般为 `*sysupgrade.img.gz`）。
 
 ---
 
-## 插件清单（按功能分类）
-
-> OpenWrt/ImmortalWrt 包非常多，这里列常用“点菜菜单”。  
-> - LuCI 插件：`luci-app-xxx`
-> - 中文包：`luci-i18n-xxx-zh-cn`
-> - 建议按需添加，保持系统精简与稳定
+## 插件清单
 
 <details>
 <summary><b>1) Web 管理与系统基础</b></summary>
