@@ -38,18 +38,32 @@ pick_latest_snapshot_branch() {
 find_imagebuilder_url() {
   local rel="$1"
   local target_dir="$BASE_URL/releases/${rel}/targets/${TARGET}/"
-  # 优先从 sha256sums 解析（稳定且快速）
   local sha_url="${target_dir}sha256sums"
-  local ib_name
-  ib_name="$(curl -fsSL "$sha_url" | awk '{print $2}' | grep -E 'imagebuilder-.*\.tar\.(zst|xz)$' | head -n 1 || true)"
-  if [[ -z "$ib_name" ]]; then
-    # fallback：从目录 index 解析
-    ib_name="$(fetch_index "$target_dir" | grep -oE 'immortalwrt-imagebuilder-[^"]+\.tar\.(zst|xz)' | head -n 1 || true)"
+
+  local ib_name=""
+
+  # 优先从 sha256sums 解析（更稳定）
+  # 注意：sha256sums 的文件名可能以 '*' 开头（GNU checksum 二进制标识），必须去掉
+  if curl -fsSL "$sha_url" >/dev/null 2>&1; then
+    ib_name="$(curl -fsSL "$sha_url" \
+      | awk '{print $2}' \
+      | sed 's/^\*//' \
+      | grep -E '^immortalwrt-imagebuilder-.*\.tar\.(zst|xz)$' \
+      | head -n 1 || true)"
   fi
+
+  # fallback：从目录 index 解析
+  if [[ -z "$ib_name" ]]; then
+    ib_name="$(fetch_index "$target_dir" \
+      | grep -oE 'immortalwrt-imagebuilder-[^"]+\.tar\.(zst|xz)' \
+      | head -n 1 || true)"
+  fi
+
   if [[ -z "$ib_name" ]]; then
     echo "ERROR: cannot find imagebuilder in $target_dir" >&2
     return 1
   fi
+
   echo "${target_dir}${ib_name}"
 }
 
@@ -95,6 +109,7 @@ main() {
 
   local ib_url
   ib_url="$(find_imagebuilder_url "$rel")"
+
   local upstream_id
   upstream_id="$(calc_upstream_id "$rel")"
 
@@ -116,6 +131,7 @@ main() {
     echo "Upstream not updated. Skip build."
   else
     echo "Will build: version=$rel upstream_id=$upstream_id"
+    echo "ImageBuilder: $ib_url"
   fi
 }
 
