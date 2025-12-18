@@ -14,40 +14,48 @@ REMOVE_PACKAGES="${REMOVE_PACKAGES:-}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKDIR="$ROOT_DIR/workdir"
-IB_DIR="$WORKDIR/imagebuilder"
+EXTRACT_DIR="$WORKDIR/extract"
 
 mkdir -p "$WORKDIR"
-rm -rf "$IB_DIR"
-mkdir -p "$IB_DIR"
+rm -rf "$EXTRACT_DIR"
+mkdir -p "$EXTRACT_DIR"
 
 echo "Downloading ImageBuilder:"
 echo "$IMAGEBUILDER_URL"
 
 archive="$WORKDIR/$(basename "$IMAGEBUILDER_URL")"
+rm -f "$archive"
 curl -fL "$IMAGEBUILDER_URL" -o "$archive"
 
 echo "Extracting..."
-mkdir -p "$WORKDIR/extract"
-rm -rf "$WORKDIR/extract"/*
 if [[ "$archive" == *.tar.zst ]]; then
-  tar --zstd -xf "$archive" -C "$WORKDIR/extract"
+  tar --zstd -xf "$archive" -C "$EXTRACT_DIR"
 elif [[ "$archive" == *.tar.xz ]]; then
-  tar -xJf "$archive" -C "$WORKDIR/extract"
+  tar -xJf "$archive" -C "$EXTRACT_DIR"
 else
   echo "ERROR: unknown archive suffix: $archive" >&2
   exit 1
 fi
 
-# imagebuilder dir name varies; pick first directory
-IB_SRC="$(find "$WORKDIR/extract" -maxdepth 1 -type d -name '*imagebuilder*' | head -n 1)"
-if [[ -z "$IB_SRC" ]]; then
-  echo "ERROR: cannot find imagebuilder directory after extraction" >&2
+# 自动定位 ImageBuilder 根目录：找到包含 image: 目标的 Makefile
+IB_DIR=""
+while IFS= read -r mf; do
+  if grep -qE '^[[:space:]]*image:' "$mf"; then
+    IB_DIR="$(dirname "$mf")"
+    break
+  fi
+done < <(find "$EXTRACT_DIR" -maxdepth 3 -type f -name Makefile | sort)
+
+if [[ -z "$IB_DIR" ]]; then
+  echo "ERROR: cannot locate ImageBuilder root (Makefile with 'image:' target not found)" >&2
+  echo "DEBUG: extracted top-level:" >&2
+  find "$EXTRACT_DIR" -maxdepth 2 -type d -print >&2 || true
   exit 1
 fi
-mv "$IB_SRC" "$IB_DIR"
 
+echo "ImageBuilder root: $IB_DIR"
 echo "Preparing overlay files..."
-# ensure overlay exists
+
 OVERLAY="$ROOT_DIR/files"
 test -d "$OVERLAY"
 
@@ -58,23 +66,27 @@ echo "Packages: $PACKAGES"
 
 pushd "$IB_DIR" >/dev/null
 
+# （可选）打印 info，方便排查 PROFILE 是否存在
+echo "== make info (first 50 lines) =="
+make info | head -n 50 || true
+echo "================================"
+
 # Build
 make image PROFILE="$PROFILE" PACKAGES="$PACKAGES" FILES="$OVERLAY"
 
 popd >/dev/null
 
-# Find firmware
+# Find firmware output
 OUTDIR="$IB_DIR/bin/targets/${TARGET}"
 if [[ ! -d "$OUTDIR" ]]; then
   echo "ERROR: output dir not found: $OUTDIR" >&2
-  find "$IB_DIR/bin" -maxdepth 4 -type d || true
+  find "$IB_DIR/bin" -maxdepth 5 -type d -print || true
   exit 1
 fi
 
 # Prefer sysupgrade img.gz
 firmware="$(ls -1 "$OUTDIR"/*nanopi-r2s*sysupgrade*.img.gz 2>/dev/null | head -n 1 || true)"
 if [[ -z "$firmware" ]]; then
-  # fallback: any img.gz for r2s
   firmware="$(ls -1 "$OUTDIR"/*nanopi-r2s*.img.gz 2>/dev/null | head -n 1 || true)"
 fi
 if [[ -z "$firmware" ]]; then
@@ -92,7 +104,6 @@ else
 fi
 release_name="ImmortalWrt ${UPSTREAM_VERSION} NanoPi R2S"
 
-# Release body (store upstream id for next scheduled skip check)
 release_body=$(
   cat <<EOF
 Target: ${TARGET}
@@ -110,7 +121,6 @@ EOF
 echo "firmware_path=$firmware" >> "$GITHUB_OUTPUT"
 echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
 echo "release_name=$release_name" >> "$GITHUB_OUTPUT"
-# multiline output
 {
   echo "release_body<<'EOF'"
   echo "$release_body"
