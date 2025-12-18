@@ -1,7 +1,5 @@
 # ImmortalWrt NanoPi R2S 
 
----
-
 ![Build](https://github.com/MZRidaz/Nanopi-R2S-Openwrt/actions/workflows/build-r2s.yml/badge.svg)
 ![Release](https://img.shields.io/github/v/release/MZRidaz/Nanopi-R2S-Openwrt?display_name=tag&sort=semver)
 ![Downloads](https://img.shields.io/github/downloads/MZRidaz/Nanopi-R2S-Openwrt/total)
