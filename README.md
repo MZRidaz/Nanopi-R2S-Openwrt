@@ -5,8 +5,6 @@
 ![Downloads](https://img.shields.io/github/downloads/MZRidaz/Nanopi-R2S-Openwrt/total)
 ![License](https://img.shields.io/github/license/MZRidaz/Nanopi-R2S-Openwrt)
 
----
-
 ## 目录
 
 - [默认配置](#默认配置)
