@@ -1,11 +1,6 @@
-# ImmortalWrt NanoPi R2S 自动构建固件（ImageBuilder + GitHub Actions）
-
-> 面向 **FriendlyARM NanoPi R2S（rockchip/armv8）** 的 ImmortalWrt 固件自动构建仓库：  
-> **快**（ImageBuilder）・**省心**（自动更新检测）・**可控**（勾选功能组）・**可发布**（自动 Releases）
+# ImmortalWrt NanoPi R2S 
 
 ---
-
-## 徽章
 
 ![Build](https://github.com/MZRidaz/Nanopi-R2S-Openwrt/actions/workflows/build-r2s.yml/badge.svg)
 ![Release](https://img.shields.io/github/v/release/MZRidaz/Nanopi-R2S-Openwrt?display_name=tag&sort=semver)
